@@ -1,5 +1,3 @@
-"""Main console framework for Kotosploit"""
-
 import os
 import sys
 from colorama import Fore, Style, init
@@ -51,6 +49,8 @@ class KotosploitConsole:
             "options": self.cmd_options,
             "run": self.cmd_run,
             "exploit": self.cmd_run,
+            "search": self.cmd_search,
+            "reload": self.cmd_reload,
             "exit": self.cmd_exit,
             "quit": self.cmd_exit,
             "banner": self.cmd_banner,
@@ -74,17 +74,51 @@ class KotosploitConsole:
   set <opt> <val>   Set module option
   options           Show module options
   run/exploit       Execute the current module
+  search <keyword>   Search modules by keyword
+  reload            Reload all modules
   banner            Display banner again
   clear             Clear screen
   exit/quit         Exit Kotosploit
 
 {Fore.YELLOW}Exploit Modules{Style.RESET_ALL}
 {Fore.WHITE}{'='*60}{Style.RESET_ALL}
-  exploit/sqli          SQL Injection scanner
-  exploit/xss           Cross-Site Scripting detector
-  exploit/lfi           Local File Inclusion scanner
-  exploit/cmdi          Command Injection scanner
-  exploit/openredirect  Open Redirect detector
+  exploit/sqli               SQL Injection scanner
+  exploit/xss                Cross-Site Scripting detector
+  exploit/lfi                Local File Inclusion scanner
+  exploit/cmdi               Command Injection scanner
+  exploit/openredirect        Open Redirect detector
+  exploit/reflected-xss      Reflected XSS scanner
+  exploit/stored-xss         Stored XSS scanner
+  exploit/csrf               Cross-Site Request Forgery scanner
+  exploit/xxe                 XML External Entity scanner
+  exploit/xmli               XML Injection scanner
+  exploit/nosqli              NoSQL Injection scanner
+  exploit/ssrf                Server-Side Request Forgery scanner
+  exploit/rfi                Remote File Inclusion scanner
+  exploit/ssti                Server-Side Template Injection scanner
+  exploit/code_injection      Code Injection scanner
+  exploit/os-cmd-inj          OS Command Injection scanner
+  exploit/ldapi               LDAP Injection scanner
+  exploit/xpathinj            XPath Injection scanner
+  exploit/cors                Cross-Origin Resource Sharing scanner
+  exploit/crlfinjection       CRLF Injection scanner
+  exploit/cache_poisoning     Cache Poisoning scanner
+  exploit/follina             Follina vulnerability scanner
+  exploit/foll                File/Object Local/Remote scanner
+  exploit/weak_password_policy Weak Password Policy scanner
+  exploit/passwordresetpoisoning Password Reset Poisoning scanner
+  exploit/session_fixation    Session Fixation scanner
+  exploit/session-hijacking   Session Hijacking scanner
+  exploit/credentialstuffing  Credential Stuffing scanner
+  exploit/clickjacking        Clickjacking scanner
+  exploit/broken_authentication Broken Authentication scanner
+  exploit/brokenauthz          Broken Authorization scanner
+  exploit/business_logic       Business Logic Vulnerability scanner
+  exploit/privilege_escalation Privilege Escalation scanner
+  exploit/mobileapi            Mobile API Vulnerability scanner
+  exploit/idor                 Insecure Direct Object Reference scanner
+  exploit/forcedbrowsing      Forced Browsing scanner
+  exploit/multiple             Multiple Vulnerability scanner
 
 {Fore.YELLOW}Auxiliary Modules{Style.RESET_ALL}
 {Fore.WHITE}{'='*60}{Style.RESET_ALL}
@@ -99,6 +133,11 @@ class KotosploitConsole:
   auxiliary/tech_stack      Technology stack detector
   auxiliary/info_disclosure Information disclosure scanner
   auxiliary/crawler         Web crawler for endpoints
+  auxiliary/waf_detector     WAF detection & fingerprinting
+  auxiliary/dns_scanner     DNS scanner
+  auxiliary/email_scanner   Email harvester & validator
+  auxiliary/subnet_scanner  Subnet scanner
+  auxiliary/service_enum    Service enumeration
 
 {Fore.YELLOW}Usage Example{Style.RESET_ALL}
 {Fore.WHITE}{'='*60}{Style.RESET_ALL}
@@ -201,6 +240,33 @@ class KotosploitConsole:
         except Exception as e:
             print(f"{Fore.RED}[!] Error: {e}{Style.RESET_ALL}")
     
+    def cmd_search(self, args):
+        if not args:
+            print(f"{Fore.RED}[!] Usage: search <keyword>{Style.RESET_ALL}")
+            return
+        
+        keyword = args.lower()
+        modules = self.loader.list_modules()
+        matching_modules = []
+        
+        for path, module in modules.items():
+            if keyword in path.lower():
+                matching_modules.append(path)
+        
+        if matching_modules:
+            print(f"\n{Fore.YELLOW}Matching Modules{Style.RESET_ALL}")
+            print(f"{Fore.WHITE}{'='*60}{Style.RESET_ALL}")
+            for path in sorted(matching_modules):
+                print(f"  {Fore.GREEN}{path}{Style.RESET_ALL}")
+            print()
+        else:
+            print(f"{Fore.YELLOW}[*] No modules found matching: {keyword}{Style.RESET_ALL}")
+    
+    def cmd_reload(self, args):
+        print(f"{Fore.YELLOW}[*] Reloading modules...{Style.RESET_ALL}")
+        self.loader = ModuleLoader()
+        print(f"{Fore.GREEN}[+] Modules reloaded successfully{Style.RESET_ALL}")
+    
     def _display_results(self, result):
         if result.get("success"):
             print(f"\n{Fore.GREEN}[+] Module execution completed{Style.RESET_ALL}")
@@ -209,6 +275,20 @@ class KotosploitConsole:
         
         if result.get("message"):
             print(f"{Fore.CYAN}{result['message']}{Style.RESET_ALL}")
+        
+        if result.get("vulnerabilities"):
+            print(f"\n{Fore.YELLOW}Vulnerabilities Found:{Style.RESET_ALL}")
+            for vuln in result.get("vulnerabilities"):
+                print(f"  {Fore.RED}- {vuln.get('type', 'Unknown')}{Style.RESET_ALL}")
+                if vuln.get("description"):
+                    print(f"    {Fore.WHITE}{vuln.get('description')}{Style.RESET_ALL}")
+        
+        if result.get("exploits"):
+            print(f"\n{Fore.YELLOW}Exploits Found:{Style.RESET_ALL}")
+            for exploit in result.get("exploits"):
+                print(f"  {Fore.RED}- {exploit.get('type', 'Unknown')}{Style.RESET_ALL}")
+                if exploit.get("description"):
+                    print(f"    {Fore.WHITE}{exploit.get('description')}{Style.RESET_ALL}")
     
     def cmd_exit(self, args):
         print(f"\n{Fore.YELLOW}[*] Thank you for using Kotosploit! Meow~{Style.RESET_ALL}")
