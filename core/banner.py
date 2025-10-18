@@ -1,7 +1,9 @@
+"""Banner and ASCII art for Kotosploit"""
+
 import random
 import datetime
 from colorama import Fore, Style
-from core.ascii_cats import get_random_cat, get_hacker_cat
+from core.ascii_cats import get_random_cat, get_hacker_cat, get_special_cat, get_seasonal_cat
 from core.config import Config
 
 BANNER = r"""
@@ -32,8 +34,8 @@ def get_supporters():
     supporters = [
         {
             "name": "yuri08",
-            "role": "Developer",
-            "contribution": "framework development and security research"
+            "role": " Developer",
+            "contribution":  framework development and security research"
         },
     ]
     return supporters
@@ -44,7 +46,7 @@ def get_system_info():
         f"{Fore.BLUE}Python: {random.choice(['3.8', '3.9', '3.10', '3.11'])}.{random.randint(0, 9)} (Snake charmer){Style.RESET_ALL}",
         f"{Fore.YELLOW}Memory: {random.randint(4, 64)}GB (Plenty of space for cat naps){Style.RESET_ALL}",
         f"{Fore.RED}CPU: {random.choice(['Intel', 'AMD', 'ARM'])} {random.randint(2, 16)} cores (Purring at {random.randint(1000, 5000)}MHz){Style.RESET_ALL}",
-        f"{Fore.CYAN}Storage: {random.choice(['SSD', 'HDD', 'NVMe')} {random.randint(256, 2048)}GB (Enough space for cat videos){Style.RESET_ALL}",
+        f"{Fore.CYAN}Storage: {random.choice(['SSD', 'HDD', 'NVMe'])} {random.randint(256, 2048)}GB (Enough space for cat videos){Style.RESET_ALL}",
     ]
     return random.sample(system_info, 3)
 
@@ -57,25 +59,29 @@ def get_hacker_quote():
         "\"Curiosity killed the cat, but satisfaction brought it back.\" - yuri08",
         "\"In a world full of mice, be a cat.\" - yuri08",
         "\"Hack like a cat, silent but deadly.\" - kotosploit team",
+        "\"Cats and hackers have one thing in common: they both enjoy exploring systems.\" - yuri08",
+        "\"A cat's purr is one of the most comforting sounds in the world, much like a successful exploit.\" - kotosploit team",
     ]
     return random.choice(quotes)
 
 def display_banner():
     print(f"{Config.BANNER_COLOR}{BANNER}{Style.RESET_ALL}")
     
+    month = datetime.datetime.now().month
+    
     cat_choice = random.random()
-    if cat_choice < 0.7:  
+    if month == 12 and cat_choice < 0.7: 
+        cat_art = get_christmas_cat()
+    elif month == 10 and cat_choice < 0.7:  
+        cat_art = get_halloween_cat()
+    elif cat_choice < 0.6: 
         cat_art = get_random_cat()
-    elif cat_choice < 0.9:  
+    elif cat_choice < 0.8: 
         cat_art = get_hacker_cat()
+    elif cat_choice < 0.95: 
+        cat_art = get_special_cat()
     else:  
-        cat_art = """
-    /\\_/\\  
-   ( >^.^< ) 
-    \\_____/ 
-     |   |
-    /|___|\\
-        """
+        cat_art = get_seasonal_cat()
     
     print(f"{Config.CAT_ART_COLOR}{cat_art}{Style.RESET_ALL}")
     
@@ -104,6 +110,6 @@ def display_banner():
     print(f"{Config.COMMAND_COLOR}  Type 'help' for available commands{Style.RESET_ALL}\n")
     
     print(f"{Fore.BLUE}  {Config.get_version_string()}{Style.RESET_ALL}")
-    print(f"{Fore.MAGENTA}  'Purr-fect security assessment tool'{Style.RESET_ALL}\n")
+    print(f"{Fore.MAGENTA}  '{Config.FRAMEWORK_TAGLINE}'{Style.RESET_ALL}\n")
     
     print(f"{Fore.YELLOW}  {get_hacker_quote()}{Style.RESET_ALL}\n")
