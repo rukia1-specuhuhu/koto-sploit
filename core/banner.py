@@ -35,7 +35,7 @@ def get_supporters():
         {
             "name": "yuri08",
             "role": " Developer",
-            "contribution":  framework development and security research"
+            "contribution":"framework development and security research"
         },
     ]
     return supporters
