@@ -119,6 +119,11 @@ class KotosploitConsole:
   exploit/idor                 Insecure Direct Object Reference scanner
   exploit/forcedbrowsing      Forced Browsing scanner
   exploit/multiple             Multiple Vulnerability scanner
+  exploit/domxss               DOM-based XSS scanner
+  exploit/directorylisting    Directory Listing scanner
+  exploit/prototypepollution  Prototype Pollution scanner
+  exploit/race-conditions     Race Conditions scanner
+  exploit/xxsi                Cross-Site Script Inclusion scanner
 
 {Fore.YELLOW}Auxiliary Modules{Style.RESET_ALL}
 {Fore.WHITE}{'='*60}{Style.RESET_ALL}
@@ -300,3 +305,88 @@ class KotosploitConsole:
     
     def cmd_clear(self, args):
         os.system('clear' if os.name != 'nt' else 'cls')
+
+class ModuleLoader:
+    def __init__(self):
+        self.modules = {}
+        self.load_modules()
+    
+    def load_modules(self):
+        module_paths = {
+            "exploit/sqli": "modules.exploit.sqli",
+            "exploit/xss": "modules.exploit.xss",
+            "exploit/lfi": "modules.exploit.lfi",
+            "exploit/cmdi": "modules.exploit.cmdi",
+            "exploit/openredirect": "modules.exploit.openredirect",
+            "exploit/reflected-xss": "modules.exploit.reflected-xss",
+            "exploit/stored-xss": "modules.exploit.stored-xss",
+            "exploit/csrf": "modules.exploit.csrf",
+            "exploit/xxe": "modules.exploit.xxe",
+            "exploit/xmli": "modules.exploit.xmli",
+            "exploit/nosqli": "modules.exploit.nosqli",
+            "exploit/ssrf": "modules.exploit.ssrf",
+            "exploit/rfi": "modules.exploit.rfi",
+            "exploit/ssti": "modules.exploit.ssti",
+            "exploit/code_injection": "modules.exploit.code_injection",
+            "exploit/os-cmd-inj": "modules.exploit.os-cmd-inj",
+            "exploit/ldapi": "modules.exploit.ldapi",
+            "exploit/xpathinj": "modules.exploit.xpathinj",
+            "exploit/cors": "modules.exploit.cors",
+            "exploit/crlfinjection": "modules.exploit.crlfinjection",
+            "exploit/cache_poisoning": "modules.exploit.cache_poisoning",
+            "exploit/follina": "modules.exploit.follina",
+            "exploit/foll": "modules.exploit.foll",
+            "exploit/weak_password_policy": "modules.exploit.weak_password_policy",
+            "exploit/passwordresetpoisoning": "modules.exploit.passwordresetpoisoning",
+            "exploit/session_fixation": "modules.exploit.session_fixation",
+            "exploit/session-hijacking": "modules.exploit.session-hijacking",
+            "exploit/credentialstuffing": "modules.exploit.credentialstuffing",
+            "exploit/clickjacking": "modules.exploit.clickjacking",
+            "exploit/broken_authentication": "modules.exploit.broken_authentication",
+            "exploit/brokenauthz": "modules.exploit.brokenauthz",
+            "exploit/business_logic": "modules.exploit.business_logic",
+            "exploit/privilege_escalation": "modules.exploit.privilege_escalation",
+            "exploit/mobileapi": "modules.exploit.mobileapi",
+            "exploit/idor": "modules.exploit.idor",
+            "exploit/forcedbrowsing": "modules.exploit.forcedbrowsing",
+            "exploit/multiple": "modules.exploit.multiple",
+            "exploit/js-hijacking": "modules.exploit.js-hijacking",
+            "exploit/domxss": "modules.exploit.domxss",
+            "exploit/directorylisting": "modules.exploit.directorylisting",
+            "exploit/prototypepollution": "modules.exploit.prototypepollution",
+            "exploit/race-conditions": "modules.exploit.race-conditions",
+            "exploit/xxsi": "modules.exploit.xxsi",
+            "auxiliary/dirfuzz": "modules.auxiliary.dirfuzz",
+            "auxiliary/subdomain": "modules.auxiliary.subdomain",
+            "auxiliary/whois": "modules.auxiliary.whois",
+            "auxiliary/headers": "modules.auxiliary.headers",
+            "auxiliary/ssl_scanner": "modules.auxiliary.ssl_scanner",
+            "auxiliary/port_scanner": "modules.auxiliary.port_scanner",
+            "auxiliary/db_scanner": "modules.auxiliary.db_scanner",
+            "auxiliary/cms_detector": "modules.auxiliary.cms_detector",
+            "auxiliary/tech_stack": "modules.auxiliary.tech_stack",
+            "auxiliary/info_disclosure": "modules.auxiliary.info_disclosure",
+            "auxiliary/crawler": "modules.auxiliary.crawler",
+            "auxiliary/waf_detector": "modules.auxiliary.waf_detector",
+            "auxiliary/dns_scanner": "modules.auxiliary.dns_scanner",
+            "auxiliary/email_scanner": "modules.auxiliary.email_scanner",
+            "auxiliary/subnet_scanner": "modules.auxiliary.subnet_scanner",
+            "auxiliary/service_enum": "modules.auxiliary.service_enum"
+        }
+        
+        for path, module_name in module_paths.items():
+            try:
+                module_parts = module_name.split('.')
+                module = __import__(module_name, fromlist=[module_parts[-1]])
+                class_name = ''.join(part.capitalize() for part in module_parts[-1].split('_'))
+                if hasattr(module, class_name):
+                    module_class = getattr(module, class_name)
+                    self.modules[path] = module_class()
+            except ImportError:
+                continue
+    
+    def list_modules(self):
+        return self.modules
+    
+    def get_module(self, path):
+        return self.modules.get(path)
