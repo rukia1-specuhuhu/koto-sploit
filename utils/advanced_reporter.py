@@ -1,11 +1,19 @@
-"""Advanced report generator with multiple formats"""
-
 import json
 import csv
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from typing import List, Dict, Any
 from colorama import Fore, Style
+import zipfile
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib import colors
 
 class AdvancedReporter:
     def __init__(self):
@@ -24,6 +32,10 @@ class AdvancedReporter:
             self.scan_data["targets"].append(target)
     
     def add_vulnerability(self, vuln: Dict[str, Any]):
+        required_keys = ['type', 'target']
+        for key in required_keys:
+            if key not in vuln:
+                print(f"{Fore.YELLOW}[!] Warning: Missing '{key}' in vulnerability data{Style.RESET_ALL}")
         vuln["discovered_at"] = datetime.now().isoformat()
         self.scan_data["vulnerabilities"].append(vuln)
     
@@ -217,6 +229,79 @@ class AdvancedReporter:
             print(f"{Fore.RED}[!] Error saving HTML report: {e}{Style.RESET_ALL}")
             return None
     
+    def generate_pdf_report(self, filename: str = None):
+        if not filename:
+            filename = f"kotosploit_report_{self.session_id}.pdf"
+        
+        doc = SimpleDocTemplate(filename, pagesize=letter)
+        styles = getSampleStyleSheet()
+        story = []
+        
+        story.append(Paragraph("Kotosploit Security Report", styles['Title']))
+        story.append(Spacer(1, 12))
+        
+        data = [['Type', 'Target', 'Parameter', 'Payload', 'Discovered At']]
+        for vuln in self.scan_data["vulnerabilities"]:
+            data.append([
+                vuln.get('type', 'Unknown'),
+                vuln.get('target', 'Unknown'),
+                vuln.get('parameter', 'N/A'),
+                vuln.get('payload', 'N/A')[:50] + '...',
+                vuln.get('discovered_at', 'Unknown')
+            ])
+        
+        table = Table(data)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        
+        story.append(table)
+        doc.build(story)
+        
+        print(f"{Fore.GREEN}[+] PDF report saved: {filename}{Style.RESET_ALL}")
+        return filename
+    
+    def zip_reports(self, filenames: List[str], zip_name: str = None):
+        if not zip_name:
+            zip_name = f"kotosploit_report_{self.session_id}.zip"
+        
+        with zipfile.ZipFile(zip_name, 'w') as zipf:
+            for file in filenames:
+                zipf.write(file)
+        
+        print(f"{Fore.GREEN}[+] Reports zipped: {zip_name}{Style.RESET_ALL}")
+        return zip_name
+    
+    def send_email_report(self, to_email: str, subject: str, smtp_server: str, smtp_port: int, username: str, password: str):
+        msg = MIMEMultipart()
+        msg['From'] = username
+        msg['To'] = to_email
+        msg['Subject'] = subject
+        
+        with open(f"kotosploit_report_{self.session_id}.html", 'r') as f:
+            msg.attach(MIMEText(f.read(), 'html'))
+        
+        with open(f"kotosploit_report_{self.session_id}.zip", 'rb') as f:
+            part = MIMEBase('application', 'zip')
+            part.set_payload(f.read())
+            encoders.encode_base64(part)
+            part.add_header('Content-Disposition', f'attachment; filename=report.zip')
+            msg.attach(part)
+        
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(username, password)
+            server.send_message(msg)
+        
+        print(f"{Fore.GREEN}[+] Email sent to {to_email}{Style.RESET_ALL}")
+    
     def generate_all_reports(self, base_name: str = None):
         if not base_name:
             base_name = f"kotosploit_report_{self.session_id}"
@@ -228,8 +313,12 @@ class AdvancedReporter:
         reports.append(self.generate_csv_report(f"{base_name}.csv"))
         reports.append(self.generate_xml_report(f"{base_name}.xml"))
         reports.append(self.generate_html_report(f"{base_name}.html"))
+        reports.append(self.generate_pdf_report(f"{base_name}.pdf"))
         
-        return [r for r in reports if r is not None]
+        valid_reports = [r for r in reports if r is not None]
+        self.zip_reports(valid_reports)
+        
+        return valid_reports
     
     def print_summary(self):
         print(f"\n{Fore.YELLOW}{'='*60}{Style.RESET_ALL}")
