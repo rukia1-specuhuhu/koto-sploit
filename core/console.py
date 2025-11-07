@@ -1,5 +1,3 @@
-"""Main console framework for Kotosploit"""
-
 import os
 import sys
 from colorama import Fore, Style, init
@@ -51,6 +49,8 @@ class KotosploitConsole:
             "options": self.cmd_options,
             "run": self.cmd_run,
             "exploit": self.cmd_run,
+            "search": self.cmd_search,
+            "reload": self.cmd_reload,
             "exit": self.cmd_exit,
             "quit": self.cmd_exit,
             "banner": self.cmd_banner,
@@ -74,17 +74,56 @@ class KotosploitConsole:
   set <opt> <val>   Set module option
   options           Show module options
   run/exploit       Execute the current module
+  search <keyword>   Search modules by keyword
+  reload            Reload all modules
   banner            Display banner again
   clear             Clear screen
   exit/quit         Exit Kotosploit
 
 {Fore.YELLOW}Exploit Modules{Style.RESET_ALL}
 {Fore.WHITE}{'='*60}{Style.RESET_ALL}
-  exploit/sqli          SQL Injection scanner
-  exploit/xss           Cross-Site Scripting detector
-  exploit/lfi           Local File Inclusion scanner
-  exploit/cmdi          Command Injection scanner
-  exploit/openredirect  Open Redirect detector
+  exploit/sqli               SQL Injection scanner
+  exploit/xss                Cross-Site Scripting detector
+  exploit/lfi                Local File Inclusion scanner
+  exploit/cmdi               Command Injection scanner
+  exploit/openredirect        Open Redirect detector
+  exploit/reflected-xss      Reflected XSS scanner
+  exploit/stored-xss         Stored XSS scanner
+  exploit/csrf               Cross-Site Request Forgery scanner
+  exploit/xxe                 XML External Entity scanner
+  exploit/xmli               XML Injection scanner
+  exploit/nosqli              NoSQL Injection scanner
+  exploit/ssrf                Server-Side Request Forgery scanner
+  exploit/rfi                Remote File Inclusion scanner
+  exploit/ssti                Server-Side Template Injection scanner
+  exploit/code_injection      Code Injection scanner
+  exploit/os-cmd-inj          OS Command Injection scanner
+  exploit/ldapi               LDAP Injection scanner
+  exploit/xpathinj            XPath Injection scanner
+  exploit/cors                Cross-Origin Resource Sharing scanner
+  exploit/crlfinjection       CRLF Injection scanner
+  exploit/cache_poisoning     Cache Poisoning scanner
+  exploit/follina             Follina vulnerability scanner
+  exploit/foll                File/Object Local/Remote scanner
+  exploit/weak_password_policy Weak Password Policy scanner
+  exploit/passwordresetpoisoning Password Reset Poisoning scanner
+  exploit/session_fixation    Session Fixation scanner
+  exploit/session-hijacking   Session Hijacking scanner
+  exploit/credentialstuffing  Credential Stuffing scanner
+  exploit/clickjacking        Clickjacking scanner
+  exploit/broken_authentication Broken Authentication scanner
+  exploit/brokenauthz          Broken Authorization scanner
+  exploit/business_logic       Business Logic Vulnerability scanner
+  exploit/privilege_escalation Privilege Escalation scanner
+  exploit/mobileapi            Mobile API Vulnerability scanner
+  exploit/idor                 Insecure Direct Object Reference scanner
+  exploit/forcedbrowsing      Forced Browsing scanner
+  exploit/multiple             Multiple Vulnerability scanner
+  exploit/domxss               DOM-based XSS scanner
+  exploit/directorylisting    Directory Listing scanner
+  exploit/prototypepollution  Prototype Pollution scanner
+  exploit/race-conditions     Race Conditions scanner
+  exploit/xxsi                Cross-Site Script Inclusion scanner
 
 {Fore.YELLOW}Auxiliary Modules{Style.RESET_ALL}
 {Fore.WHITE}{'='*60}{Style.RESET_ALL}
@@ -99,6 +138,11 @@ class KotosploitConsole:
   auxiliary/tech_stack      Technology stack detector
   auxiliary/info_disclosure Information disclosure scanner
   auxiliary/crawler         Web crawler for endpoints
+  auxiliary/waf_detector     WAF detection & fingerprinting
+  auxiliary/dns_scanner     DNS scanner
+  auxiliary/email_scanner   Email harvester & validator
+  auxiliary/subnet_scanner  Subnet scanner
+  auxiliary/service_enum    Service enumeration
 
 {Fore.YELLOW}Usage Example{Style.RESET_ALL}
 {Fore.WHITE}{'='*60}{Style.RESET_ALL}
@@ -201,6 +245,33 @@ class KotosploitConsole:
         except Exception as e:
             print(f"{Fore.RED}[!] Error: {e}{Style.RESET_ALL}")
     
+    def cmd_search(self, args):
+        if not args:
+            print(f"{Fore.RED}[!] Usage: search <keyword>{Style.RESET_ALL}")
+            return
+        
+        keyword = args.lower()
+        modules = self.loader.list_modules()
+        matching_modules = []
+        
+        for path, module in modules.items():
+            if keyword in path.lower():
+                matching_modules.append(path)
+        
+        if matching_modules:
+            print(f"\n{Fore.YELLOW}Matching Modules{Style.RESET_ALL}")
+            print(f"{Fore.WHITE}{'='*60}{Style.RESET_ALL}")
+            for path in sorted(matching_modules):
+                print(f"  {Fore.GREEN}{path}{Style.RESET_ALL}")
+            print()
+        else:
+            print(f"{Fore.YELLOW}[*] No modules found matching: {keyword}{Style.RESET_ALL}")
+    
+    def cmd_reload(self, args):
+        print(f"{Fore.YELLOW}[*] Reloading modules...{Style.RESET_ALL}")
+        self.loader = ModuleLoader()
+        print(f"{Fore.GREEN}[+] Modules reloaded successfully{Style.RESET_ALL}")
+    
     def _display_results(self, result):
         if result.get("success"):
             print(f"\n{Fore.GREEN}[+] Module execution completed{Style.RESET_ALL}")
@@ -209,6 +280,20 @@ class KotosploitConsole:
         
         if result.get("message"):
             print(f"{Fore.CYAN}{result['message']}{Style.RESET_ALL}")
+        
+        if result.get("vulnerabilities"):
+            print(f"\n{Fore.YELLOW}Vulnerabilities Found:{Style.RESET_ALL}")
+            for vuln in result.get("vulnerabilities"):
+                print(f"  {Fore.RED}- {vuln.get('type', 'Unknown')}{Style.RESET_ALL}")
+                if vuln.get("description"):
+                    print(f"    {Fore.WHITE}{vuln.get('description')}{Style.RESET_ALL}")
+        
+        if result.get("exploits"):
+            print(f"\n{Fore.YELLOW}Exploits Found:{Style.RESET_ALL}")
+            for exploit in result.get("exploits"):
+                print(f"  {Fore.RED}- {exploit.get('type', 'Unknown')}{Style.RESET_ALL}")
+                if exploit.get("description"):
+                    print(f"    {Fore.WHITE}{exploit.get('description')}{Style.RESET_ALL}")
     
     def cmd_exit(self, args):
         print(f"\n{Fore.YELLOW}[*] Thank you for using Kotosploit! Meow~{Style.RESET_ALL}")
@@ -220,3 +305,88 @@ class KotosploitConsole:
     
     def cmd_clear(self, args):
         os.system('clear' if os.name != 'nt' else 'cls')
+
+class ModuleLoader:
+    def __init__(self):
+        self.modules = {}
+        self.load_modules()
+    
+    def load_modules(self):
+        module_paths = {
+            "exploit/sqli": "modules.exploit.sqli",
+            "exploit/xss": "modules.exploit.xss",
+            "exploit/lfi": "modules.exploit.lfi",
+            "exploit/cmdi": "modules.exploit.cmdi",
+            "exploit/openredirect": "modules.exploit.openredirect",
+            "exploit/reflected-xss": "modules.exploit.reflected-xss",
+            "exploit/stored-xss": "modules.exploit.stored-xss",
+            "exploit/csrf": "modules.exploit.csrf",
+            "exploit/xxe": "modules.exploit.xxe",
+            "exploit/xmli": "modules.exploit.xmli",
+            "exploit/nosqli": "modules.exploit.nosqli",
+            "exploit/ssrf": "modules.exploit.ssrf",
+            "exploit/rfi": "modules.exploit.rfi",
+            "exploit/ssti": "modules.exploit.ssti",
+            "exploit/code_injection": "modules.exploit.code_injection",
+            "exploit/os-cmd-inj": "modules.exploit.os-cmd-inj",
+            "exploit/ldapi": "modules.exploit.ldapi",
+            "exploit/xpathinj": "modules.exploit.xpathinj",
+            "exploit/cors": "modules.exploit.cors",
+            "exploit/crlfinjection": "modules.exploit.crlfinjection",
+            "exploit/cache_poisoning": "modules.exploit.cache_poisoning",
+            "exploit/follina": "modules.exploit.follina",
+            "exploit/foll": "modules.exploit.foll",
+            "exploit/weak_password_policy": "modules.exploit.weak_password_policy",
+            "exploit/passwordresetpoisoning": "modules.exploit.passwordresetpoisoning",
+            "exploit/session_fixation": "modules.exploit.session_fixation",
+            "exploit/session-hijacking": "modules.exploit.session-hijacking",
+            "exploit/credentialstuffing": "modules.exploit.credentialstuffing",
+            "exploit/clickjacking": "modules.exploit.clickjacking",
+            "exploit/broken_authentication": "modules.exploit.broken_authentication",
+            "exploit/brokenauthz": "modules.exploit.brokenauthz",
+            "exploit/business_logic": "modules.exploit.business_logic",
+            "exploit/privilege_escalation": "modules.exploit.privilege_escalation",
+            "exploit/mobileapi": "modules.exploit.mobileapi",
+            "exploit/idor": "modules.exploit.idor",
+            "exploit/forcedbrowsing": "modules.exploit.forcedbrowsing",
+            "exploit/multiple": "modules.exploit.multiple",
+            "exploit/js-hijacking": "modules.exploit.js-hijacking",
+            "exploit/domxss": "modules.exploit.domxss",
+            "exploit/directorylisting": "modules.exploit.directorylisting",
+            "exploit/prototypepollution": "modules.exploit.prototypepollution",
+            "exploit/race-conditions": "modules.exploit.race-conditions",
+            "exploit/xxsi": "modules.exploit.xxsi",
+            "auxiliary/dirfuzz": "modules.auxiliary.dirfuzz",
+            "auxiliary/subdomain": "modules.auxiliary.subdomain",
+            "auxiliary/whois": "modules.auxiliary.whois",
+            "auxiliary/headers": "modules.auxiliary.headers",
+            "auxiliary/ssl_scanner": "modules.auxiliary.ssl_scanner",
+            "auxiliary/port_scanner": "modules.auxiliary.port_scanner",
+            "auxiliary/db_scanner": "modules.auxiliary.db_scanner",
+            "auxiliary/cms_detector": "modules.auxiliary.cms_detector",
+            "auxiliary/tech_stack": "modules.auxiliary.tech_stack",
+            "auxiliary/info_disclosure": "modules.auxiliary.info_disclosure",
+            "auxiliary/crawler": "modules.auxiliary.crawler",
+            "auxiliary/waf_detector": "modules.auxiliary.waf_detector",
+            "auxiliary/dns_scanner": "modules.auxiliary.dns_scanner",
+            "auxiliary/email_scanner": "modules.auxiliary.email_scanner",
+            "auxiliary/subnet_scanner": "modules.auxiliary.subnet_scanner",
+            "auxiliary/service_enum": "modules.auxiliary.service_enum"
+        }
+        
+        for path, module_name in module_paths.items():
+            try:
+                module_parts = module_name.split('.')
+                module = __import__(module_name, fromlist=[module_parts[-1]])
+                class_name = ''.join(part.capitalize() for part in module_parts[-1].split('_'))
+                if hasattr(module, class_name):
+                    module_class = getattr(module, class_name)
+                    self.modules[path] = module_class()
+            except ImportError:
+                continue
+    
+    def list_modules(self):
+        return self.modules
+    
+    def get_module(self, path):
+        return self.modules.get(path)
